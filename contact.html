@@ -19,26 +19,26 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    const contactId = params.get("id");
+    const contactKey = params.get("contact"); // Ex: Hocquerelle_Thierry
 
-    if (!contactId) {
-      document.getElementById("contact").innerHTML = "<p>ID du contact manquant dans l'URL.</p>";
+    if (!contactKey) {
+      document.getElementById("contact").innerHTML = "<p>Paramètre 'contact' manquant dans l'URL.</p>";
     } else {
-      fetch(`contacts/${contactId}.json`)
+      fetch(`contacts/${contactKey}.json`)
         .then(res => res.json())
         .then(contact => {
           const container = document.getElementById("contact");
           container.innerHTML = `
-            <img src="photos/${contact.id}.jpg" alt="Photo de ${contact.prenom}">
+            <img src="photos/${contactKey}.jpg" alt="Photo de ${contact.prenom}">
             <h2>${contact.prenom} ${contact.nom}</h2>
             <p><strong>Société :</strong> ${contact.societe}</p>
             <p><strong>Fonction :</strong> ${contact.fonction}</p>
             <p><strong>Téléphone :</strong> ${contact.telephone}</p>
             <p><strong>Email :</strong> ${contact.email}</p>
             <p><strong>Site :</strong> <a href="${contact.site}" target="_blank">${contact.site}</a></p>
-            <button onclick="generateVCard(contact)">Ajouter à mes contacts</button>
+            <button onclick="generateVCard(contact, '${contactKey}')">Ajouter à mes contacts</button>
           `;
-          window.contact = contact; // exposé pour la fonction onclick
+          window.contact = contact; // exposé globalement si besoin
         })
         .catch(() => {
           document.getElementById("contact").innerHTML = "<p>Contact introuvable.</p>";
@@ -56,9 +56,9 @@
         }));
     }
 
-    async function generateVCard(contact) {
+    async function generateVCard(contact, key) {
       try {
-        const photoBase64 = await loadImageAsBase64(`photos/${contact.id}.jpg`);
+        const photoBase64 = await loadImageAsBase64(`photos/${key}.jpg`);
         const vcard = `
 BEGIN:VCARD
 VERSION:3.0
