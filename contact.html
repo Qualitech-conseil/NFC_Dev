@@ -19,29 +19,34 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    const contactKey = params.get("Hocquerelle_Thierry"); // Ex: Hocquerelle_Thierry
+    const contactKey = params.get("contact"); // Exemple : Hocquerelle_Thierry
 
     if (!contactKey) {
       document.getElementById("contact").innerHTML = "<p>Paramètre 'contact' manquant dans l'URL.</p>";
     } else {
-      fetch(`contacts/${contactKey}.json`)
-        .then(res => res.json())
+      const jsonPath = `contacts/${contactKey}.json`;
+      const photoPath = `photos/${contactKey}.jpg`;
+
+      fetch(jsonPath)
+        .then(res => {
+          if (!res.ok) throw new Error("Contact introuvable");
+          return res.json();
+        })
         .then(contact => {
           const container = document.getElementById("contact");
           container.innerHTML = `
-            <img src="photos/${contactKey}.jpg" alt="Photo de ${contact.prenom}">
+            <img src="${photoPath}" alt="Photo de ${contact.prenom}">
             <h2>${contact.prenom} ${contact.nom}</h2>
             <p><strong>Société :</strong> ${contact.societe}</p>
             <p><strong>Fonction :</strong> ${contact.fonction}</p>
             <p><strong>Téléphone :</strong> ${contact.telephone}</p>
             <p><strong>Email :</strong> ${contact.email}</p>
             <p><strong>Site :</strong> <a href="${contact.site}" target="_blank">${contact.site}</a></p>
-            <button onclick="generateVCard(contact, '${contactKey}')">Ajouter à mes contacts</button>
+            <button onclick="generateVCard(contact, '${photoPath}')">Ajouter à mes contacts</button>
           `;
-          window.contact = contact; // exposé globalement si besoin
         })
-        .catch(() => {
-          document.getElementById("contact").innerHTML = "<p>Contact introuvable.</p>";
+        .catch(error => {
+          document.getElementById("contact").innerHTML = `<p>Erreur : ${error.message}</p>`;
         });
     }
 
@@ -50,15 +55,18 @@
         .then(response => response.blob())
         .then(blob => new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result.split(',')[1]); // base64 only
+          reader.onloadend = () => {
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+          };
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         }));
     }
 
-    async function generateVCard(contact, key) {
+    async function generateVCard(contact, photoUrl) {
       try {
-        const photoBase64 = await loadImageAsBase64(`photos/${key}.jpg`);
+        const photoBase64 = await loadImageAsBase64(photoUrl);
         const vcard = `
 BEGIN:VCARD
 VERSION:3.0
