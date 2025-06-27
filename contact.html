@@ -1,128 +1,91 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Fiche Contact</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carte de Visite NFC</title>
   <style>
-    body {
-      font-family: Arial;
-      padding: 0;
-      margin: 0;
-      background: #f4f4f4;
-    }
-    .container {
-      background: white;
-      max-width: 100%;
-      margin: auto;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px #ccc;
-      min-height: 100vh;
-      box-sizing: border-box;
-    }
-    img {
-      width: 150px;
-      height: 150px;
-      border-radius: 50%;
-      object-fit: cover;
-      margin-bottom: 10px;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .field {
-      margin-bottom: 10px;
-    }
-    .field label {
-      font-weight: bold;
-      display: block;
-    }
-    button {
-      display: block;
-      width: 100%;
-      padding: 15px;
-      font-size: 18px;
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-    .qr {
-      text-align: center;
-      margin-top: 20px;
-    }
+    body { font-family: sans-serif; padding: 2em; background: #f4f4f4; }
+    .contact { background: white; padding: 1em; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+    img { max-width: 100px; border-radius: 50%; margin-bottom: 1em; }
+    button { padding: 0.6em 1.2em; font-size: 1em; border: none; background: #007BFF; color: white; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0056b3; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 </head>
 <body>
-  <div class="container" id="contactContainer">Chargement...</div>
+  <div class="contact" id="contact">
+    <p>Chargement du contact...</p>
+  </div>
 
   <script>
-    async function fetchContactData() {
-      const id = window.location.search.substring(1); // "prenom_nom"
+    const params = new URLSearchParams(window.location.search);
+    const contactId = params.get("id");
 
-      if (!id) {
-        document.getElementById('contactContainer').innerText = "Aucun ID fourni.";
-        return;
-      }
-
-      try {
-        const response = await fetch(`contacts/${id}.json`);
-        if (!response.ok) throw new Error('Contact introuvable');
-        const data = await response.json();
-
-        const vcfData = `BEGIN:VCARD\nVERSION:3.0\nN:${data.nom};${data.prenom}\nFN:${data.prenom} ${data.nom}\nORG:${data.societe}\nTITLE:${data.fonction}\nTEL:${data.telephone}\nEMAIL:${data.email}\nURL:${data.siteweb}\nNOTE:${data.description}\nEND:VCARD`;
-
-        const blob = new Blob([vcfData], { type: "text/vcard" });
-        const vcfURL = URL.createObjectURL(blob);
-
-        const fullUrl = window.location.href;
-
-        document.getElementById('contactContainer').innerHTML = `
-          <img src="photos/${data.photo}" alt="Photo de ${data.prenom}" />
-          <div class="field"><label>Nom :</label>${data.prenom} ${data.nom}</div>
-          <div class="field"><label>Entreprise :</label>${data.societe}</div>
-          <div class="field"><label>Fonction :</label>${data.fonction}</div>
-          <div class="field"><label>Téléphone :</label><a href="tel:${data.telephone}">${data.telephone}</a></div>
-          <div class="field"><label>Email :</label><a href="mailto:${data.email}">${data.email}</a></div>
-          <div class="field"><label>Site web :</label><a href="${data.siteweb}" target="_blank">${data.siteweb}</a></div>
-          <div class="field"><label>Description :</label>${data.description}</div>
-          <div class="field"><label>Réseaux sociaux :</label>
-            ${data.instagram ? `<a href="${data.instagram}" target="_blank">Instagram</a><br>` : ''}
-            ${data.linkedin ? `<a href="${data.linkedin}" target="_blank">LinkedIn</a><br>` : ''}
-            ${data.googlebusiness ? `<a href="${data.googlebusiness}" target="_blank">Google Business</a><br>` : ''}
-            ${data.facebook ? `<a href="${data.facebook}" target="_blank">Facebook</a>` : ''}
-          </div>
-          <br>
-          <a href="${vcfURL}" download="${data.nom}_${data.prenom}.vcf">
-            <button>Ajouter à mes contacts</button>
-          </a>
-          <div class="qr">
-            <canvas id="qrCodeCanvas"></canvas>
-          </div>
-        `;
-
-        QRCode.toCanvas(document.getElementById("qrCodeCanvas"), fullUrl, function (error) {
-          if (error) console.error(error);
+    if (!contactId) {
+      document.getElementById("contact").innerHTML = "<p>ID du contact manquant dans l'URL.</p>";
+    } else {
+      fetch(`contacts/${contactId}.json`)
+        .then(res => res.json())
+        .then(contact => {
+          const container = document.getElementById("contact");
+          container.innerHTML = `
+            <img src="photos/${contact.id}.jpg" alt="Photo de ${contact.prenom}">
+            <h2>${contact.prenom} ${contact.nom}</h2>
+            <p><strong>Société :</strong> ${contact.societe}</p>
+            <p><strong>Fonction :</strong> ${contact.fonction}</p>
+            <p><strong>Téléphone :</strong> ${contact.telephone}</p>
+            <p><strong>Email :</strong> ${contact.email}</p>
+            <p><strong>Site :</strong> <a href="${contact.site}" target="_blank">${contact.site}</a></p>
+            <button onclick="generateVCard(contact)">Ajouter à mes contacts</button>
+          `;
+          window.contact = contact; // exposé pour la fonction onclick
+        })
+        .catch(() => {
+          document.getElementById("contact").innerHTML = "<p>Contact introuvable.</p>";
         });
-      } catch (error) {
-        document.getElementById('contactContainer').innerText = "Erreur : " + error.message;
-      }
     }
 
-    fetchContactData();
+    function loadImageAsBase64(url) {
+      return fetch(url)
+        .then(response => response.blob())
+        .then(blob => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(',')[1]); // base64 only
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }));
+    }
+
+    async function generateVCard(contact) {
+      try {
+        const photoBase64 = await loadImageAsBase64(`photos/${contact.id}.jpg`);
+        const vcard = `
+BEGIN:VCARD
+VERSION:3.0
+N:${contact.nom};${contact.prenom}
+FN:${contact.prenom} ${contact.nom}
+ORG:${contact.societe}
+TITLE:${contact.fonction}
+TEL;TYPE=CELL:${contact.telephone}
+EMAIL:${contact.email}
+URL:${contact.site}
+PHOTO;ENCODING=b;TYPE=JPEG:${photoBase64}
+END:VCARD
+        `.trim();
+
+        const blob = new Blob([vcard], { type: 'text/vcard' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${contact.prenom}_${contact.nom}.vcf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Erreur lors de la génération de la vCard avec la photo.");
+        console.error(err);
+      }
+    }
   </script>
-</body>
-</html>
  <div class="field"><label>Propulsé par Qualitech-conseil </label> <a href="mailto:$contact@qualitech-conseil.com">contact@qualitech-conseil.com </a> </div> 
 </body>
 </html>
